@@ -3,8 +3,8 @@ layout: home
 permalink: index.html
 
 # Please update this with your repository name and title
-repository-name: eYY-4yp-project-template
-title:
+repository-name: eYY-4yp-An-Empirical-Study-On-Prompt-Injection-Attacks-And-Defences
+title: An Empirical Study on Prompt Injection Attacks and Defences
 ---
 
 [comment]: # "This is the standard layout for the project, but you can clean this and use your own template"
@@ -13,14 +13,15 @@ title:
 
 #### Team
 
-- eNumber, Name, [email](mailto:name@email.com)
-- eNumber, Name, [email](mailto:name@email.com)
-- eNumber, Name, [email](mailto:name@email.com)
+- E/18/118, H.P.H.M. Gunarathna, [email](mailto:e18118@eng.pdn.ac.lk)
+- E/18/382, L.D. Weerarathne, [email](mailto:e18382@eng.pdn.ac.lk)
+- E/18/398, R.M.N.S. Wijerathne, [email](mailto:e18398@eng.pdn.ac.lk)
 
 #### Supervisors
 
-- Name, [email](mailto:name@eng.pdn.ac.lk)
-- Name, [email](mailto:name@eng.pdn.ac.lk)
+- Dr. Asitha Bandaranayake, [email](mailto:asithab@eng.pdn.ac.lk)
+- Dr. Damayanthi Herath, [email](mailto:damayanthiherath@eng.pdn.ac.lk)
+- Prof. Roshan G. Ragel, [email](mailto:roshanr@eng.pdn.ac.lk)
 
 #### Table of content
 
@@ -68,7 +69,7 @@ This is a sample image, to show how to add images to your page. To learn more op
 
 [//]: # ( NOTE: EDIT THIS LINKS WITH YOUR REPO DETAILS )
 
-- [Project Repository](https://github.com/cepdnaclk/repository-name)
+- [Project Repository](https://github.com/cepdnaclk/e18-4yp-An-Empirical-Study-On-Prompt-Injection-Attacks-And-Defences)
 - [Project Page](https://cepdnaclk.github.io/repository-name)
 - [Department of Computer Engineering](http://www.ce.pdn.ac.lk/)
 - [University of Peradeniya](https://eng.pdn.ac.lk/)
