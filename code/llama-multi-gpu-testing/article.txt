@@ -1,0 +1,1 @@
+https://medium.com/@geronimo7/llms-multi-gpu-inference-with-accelerate-5a8333e4c5db#:~:text=Using%20multiple%20GPUs%20seems%20to,tokens%20generated%2C%20and%20sampling%20strategy.
