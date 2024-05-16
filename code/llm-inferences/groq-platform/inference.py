@@ -1,12 +1,18 @@
-"""
-Initial code was take from official documentation of Groq (https://console.groq.com/docs/text-chat#performing-a-basic-chat-completion)
-"""
+"Below code is authored by Denuwan Weerarathne (E/18/382)"
 
 import csv
-from groq import Groq
-from dotenv import load_dotenv
+import logging
+import os
+from pathlib import Path
 from typing import Dict, List
-from time import sleep
+
+from dotenv import load_dotenv
+from groq import Groq
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -14,95 +20,84 @@ load_dotenv()
 client = Groq()
 
 
-def write_csv(file_path: str, data: List[Dict[str, str]], fieldnames: List[str]):
+class GroqChatHelper:
     """
-    Write data to a CSV file.
+    A helper class to interact with the Groq API and handle CSV file operations.
     """
-    with open(file_path, "w", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(data)
+
+    def __init__(self, output_file: str, model: str = "llama3-8b-8192"):
+        self.output_file = Path(output_file)
+        self.model = model
+        self.fieldnames = ["llm", "prompt", "llm_answer"]
+        self.data: List[Dict[str, str]] = []
+
+    def load_csv(self) -> List[Dict[str, str]]:
+        """
+        Load a CSV file into a list of dictionaries.
+        """
+        try:
+            with self.output_file.open("r") as file:
+                reader = csv.DictReader(file)
+                return [row for row in reader]
+        except FileNotFoundError:
+            logging.info(f"File {self.output_file} not found. Creating a new file.")
+            return []
+
+    def write_csv(self):
+        """
+        Write data to a CSV file.
+        """
+        with self.output_file.open("w", newline="") as file:
+            writer = csv.DictWriter(file, fieldnames=self.fieldnames)
+            writer.writeheader()
+            writer.writerows(self.data)
+
+    def get_response(self, system_content: str, user_content: str) -> str:
+        """
+        Get a response from the Groq API for the given user content and system content.
+        """
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": system_content},
+                {"role": "user", "content": user_content},
+            ],
+            model=self.model,
+            temperature=0.5,
+            max_tokens=1024,
+            top_p=1,
+            stop=None,
+            stream=False,
+        )
+        return chat_completion.choices[0].message.content
+
+    def process_prompts(
+        self, prompts: List[str], system_content: str = "You are a helpful assistant"
+    ):
+        """
+        Process a list of prompts and get responses from the Groq API.
+        """
+        for prompt_num, prompt in enumerate(prompts, start=1):
+            if prompt_num % 30 == 0:
+                logging.info("Reached rate limit. Sleeping for 60 seconds.")
+                os.sleep(60)
+
+            response = self.get_response(system_content, prompt)
+            logging.info(f"Prompt {prompt_num}: {prompt}")
+            logging.info(f"Response: {response}")
+
+            self.data.append(
+                {"llm": self.model, "prompt": prompt, "llm_answer": response}
+            )
+
+    def run(self):
+        """
+        Main entry point to run the application.
+        """
+        prompts = [doc["result"] for doc in self.load_csv()]
+        self.process_prompts(prompts)
+        self.write_csv()
 
 
-def load_csv(file_path: str) -> List[Dict[str, str]]:
-    """
-    Load a CSV file into a list of dictionaries.
-    """
-    data = []
-    try:
-        with open(file_path, "r") as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                data.append(row)
-    except FileNotFoundError:
-        # Create a new file
-        print(f"File at {file_path} not found. Creating a new file as given.")
-    return data
-
-
-def get_response(
-    client: Groq = Groq(),
-    system_content: str = "You are a helpful assistant",
-    user_content: str = "Say Hello",
-    model: str = "llama3-8b-8192",
-) -> str:
-    chat_completion = client.chat.completions.create(
-        #
-        # Required parameters
-        #
-        messages=[
-            # Set an optional system message. This sets the behavior of the
-            # assistant and can be used to provide specific instructions for
-            # how it should behave throughout the conversation.
-            {
-                "role": "system",
-                "content": system_content,
-            },
-            # Set a user message for the assistant to respond to.
-            {
-                "role": "user",
-                "content": user_content,
-            },
-        ],
-        # The language model which will generate the completion.
-        model=model,
-        #
-        # Optional parameters
-        #
-        # Controls randomness: lowering results in less random completions.
-        # As the temperature approaches zero, the model will become deterministic
-        # and repetitive.
-        temperature=0.5,
-        # The maximum number of tokens to generate. Requests can use up to
-        # 32,768 tokens shared between prompt and completion.
-        max_tokens=1024,
-        # Controls diversity via nucleus sampling: 0.5 means half of all
-        # likelihood-weighted options are considered.
-        top_p=1,
-        # A stop sequence is a predefined or user-specified text string that
-        # signals an AI to stop generating content, ensuring its responses
-        # remain focused and concise. Examples include punctuation marks and
-        # markers like "[end]".
-        stop=None,
-        # If set, partial message deltas will be sent.
-        stream=False,
-    )
-    return chat_completion.choices[0].message.content
-
-
-file = load_csv("output.csv")
-prompts = [doc["result"] for doc in file]
-fieldnames = ["llm", "prompt", "llm_answer"]
-data = []
-llm = "llama3-8b-8192"
-prompt_num = 0
-for prompt in prompts:
-    if prompt_num > 29:
-        sleep(60)
-        prompt = 0
-    response = get_response(client=client, user_content=prompt)
-    print(response)
-    data.append({"llm": llm, "prompt": prompt, "llm_answer": response})
-    prompt_num += 1
-
-write_csv(f"{llm}-responses.csv", data, fieldnames)
+if __name__ == "__main__":
+    helper = GroqChatHelper("output.csv")
+    helper.run()
