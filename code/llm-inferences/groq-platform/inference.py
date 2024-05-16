@@ -6,6 +6,7 @@ import csv
 from groq import Groq
 from dotenv import load_dotenv
 from typing import Dict, List
+from time import sleep
 
 # Load environment variables from .env file
 load_dotenv()
@@ -89,6 +90,19 @@ def get_response(
     return chat_completion.choices[0].message.content
 
 
-file = load_csv("ABC.csv")
+file = load_csv("output.csv")
+prompts = [doc["result"] for doc in file]
 fieldnames = ["llm", "prompt", "llm_answer"]
 data = []
+llm = "llama3-8b-8192"
+prompt_num = 0
+for prompt in prompts:
+    if prompt_num > 29:
+        sleep(60)
+        prompt = 0
+    response = get_response(client=client, user_content=prompt)
+    print(response)
+    data.append({"llm": llm, "prompt": prompt, "llm_answer": response})
+    prompt_num += 1
+
+write_csv(f"{llm}-responses.csv", data, fieldnames)
