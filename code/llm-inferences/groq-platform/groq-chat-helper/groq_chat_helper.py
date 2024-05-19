@@ -2,7 +2,7 @@
 
 import csv
 import logging
-import os
+from time import sleep
 from pathlib import Path
 from typing import Dict, List
 
@@ -79,7 +79,7 @@ class GroqChatHelper:
         for prompt_num, prompt in enumerate(prompts, start=1):
             if prompt_num % 30 == 0:
                 logging.info("Reached rate limit. Sleeping for 60 seconds.")
-                os.sleep(60)
+                sleep(60)
 
             response = self.get_response(system_content, prompt)
             logging.info(f"Prompt {prompt_num}: {prompt}")
