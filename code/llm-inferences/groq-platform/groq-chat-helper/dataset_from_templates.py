@@ -51,7 +51,7 @@ def main():
     prompts = load_csv("data/questions.csv")
     combinations = generate_combinations(templates, prompts)
     fieldnames = ["template", "prompt", "result"]
-    write_csv("../data.csv", combinations, fieldnames)
+    write_csv("data.csv", combinations, fieldnames)
 
 
 if __name__ == "__main__":
