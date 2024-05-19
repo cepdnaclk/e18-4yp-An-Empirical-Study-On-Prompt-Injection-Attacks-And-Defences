@@ -99,5 +99,5 @@ class GroqChatHelper:
 
 
 if __name__ == "__main__":
-    helper = GroqChatHelper("data.csv", "output.csv")
+    helper = GroqChatHelper("data.csv", "responses.csv")
     helper.run()
