@@ -17,7 +17,7 @@ COPY data/ .
 COPY dataset_from_templates.py .
 
 # Generate the prompt dataset
-RUN dataset_from_templates.py
+RUN python3 dataset_from_templates.py
 
 # Copy the Python script
 COPY groq_chat_helper.py .
