@@ -26,7 +26,7 @@ class GroqChatHelper:
         self, input_file: str, output_file: str, model: str = "llama3-8b-8192"
     ):
         self.input_file = Path(input_file)
-        self.output_file = output_file
+        self.output_file = Path(output_file)
         self.model = model
         self.fieldnames = ["llm", "prompt", "llm_answer"]
         self.data: List[Dict[str, str]] = []
@@ -47,7 +47,7 @@ class GroqChatHelper:
         """
         Write data to a CSV file.
         """
-        with self.output_file.open("w", newline="") as file:
+        with open(self.output_file, "w", newline="") as file:
             writer = csv.DictWriter(file, fieldnames=self.fieldnames)
             writer.writeheader()
             writer.writerows(self.data)
