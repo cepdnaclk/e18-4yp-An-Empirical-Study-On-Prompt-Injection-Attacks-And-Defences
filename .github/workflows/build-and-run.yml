@@ -13,12 +13,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Write API key to .env file
         run: echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" > .env.template
 
       - name: Build Docker image
-        run: docker build -t groq-chat-helper ./code/llm-inferences/groq-platform/groq-chat-helper
+        run: |
+          cd code/llm-inferences/groq-platform/groq-chat-helper
+          docker build -t groq-chat-helper .
 
       - name: Run Docker container
         run: |
