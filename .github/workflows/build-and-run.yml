@@ -32,4 +32,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: output
-          path: code/llm-inferences/groq-platform/groq-chat-helper/reponses.csv
+          path: code/llm-inferences/groq-platform/groq-chat-helper/responses.csv
