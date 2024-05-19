@@ -3,3 +3,8 @@
 code/.DS_Store
 code/dataset-creation/scripts/__pycache__/dataset_from_templates.cpython-311.pyc
 code/llm-inferences/groq-platform/.env
+.DS_Store
+.DS_Store
+code/.DS_Store
+code/llm-inferences/groq-platform/output.csv
+code/llm-inferences/groq-platform/inference-test.py
