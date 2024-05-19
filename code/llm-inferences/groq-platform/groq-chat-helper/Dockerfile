@@ -23,4 +23,4 @@ RUN dataset_from_templates.py
 COPY groq_chat_helper.py .
 
 # Set the entry point
-CMD ["python", "groq_chat_helper.py"]
+CMD ["python3", "groq_chat_helper.py"]
