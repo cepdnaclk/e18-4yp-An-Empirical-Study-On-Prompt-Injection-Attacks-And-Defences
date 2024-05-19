@@ -11,7 +11,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy data folder
-COPY data/ .
+COPY data/ data/
 
 # Copy the dataset creating script
 COPY dataset_from_templates.py .
