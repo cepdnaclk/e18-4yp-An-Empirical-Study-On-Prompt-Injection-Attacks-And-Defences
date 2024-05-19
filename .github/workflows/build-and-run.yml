@@ -17,6 +17,9 @@ jobs:
       - name: Change directory
         run: cd code/llm-inferences/groq-platform/groq-chat-helper
 
+      - name: Print working directory
+        run: echo pwd
+
       - name: Write API key to .env file
         run: echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" > .env.template
 
