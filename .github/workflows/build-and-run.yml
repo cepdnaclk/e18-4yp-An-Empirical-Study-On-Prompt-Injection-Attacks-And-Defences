@@ -14,9 +14,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Write API key to .env file
-        run: echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" > .env.template
-
       - name: Build Docker image
         run: |
           cd code/llm-inferences/groq-platform/groq-chat-helper
@@ -24,7 +21,7 @@ jobs:
 
       - name: Run Docker container
         run: |
-          docker run --rm -v ${{ github.workspace }}/code/llm-inferences/groq-platform/groq-chat-helper/output.csv:/app/output.csv groq-chat-helper
+          docker run --rm -v ${{ github.workspace }}/code/llm-inferences/groq-platform/groq-chat-helper/output.csv:/app/output.csv -e GROQ_API_KEY=${{ secrets.GROQ_API_KEY }} groq-chat-helper
 
       - name: Upload output file
         uses: actions/upload-artifact@v3
