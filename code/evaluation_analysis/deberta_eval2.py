@@ -1,4 +1,4 @@
-from main2 import ask_from_llm
+from main import ask_from_llm
 import pandas as pd
 import argparse
 
