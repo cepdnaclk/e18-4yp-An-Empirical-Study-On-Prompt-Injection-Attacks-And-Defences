@@ -4,7 +4,7 @@ import logging
 from typing import Tuple
 import pandas as pd
 import torch
-from transformers import pipeline
+from transformers import pipeline, Pipeline
 from config import MODEL_PATHS, TASK_MAP, HARMLESS_STRINGS, HARMFUL_STRINGS
 
 # Configure logging
@@ -76,7 +76,7 @@ def get_data(file_path: str) -> pd.DataFrame:
     return prompts_df
 
 
-def load_model(model_name: str) -> pipeline:
+def load_model(model_name: str) -> Pipeline:
     """
     Loads the specified language model.
 
@@ -96,7 +96,7 @@ def load_model(model_name: str) -> pipeline:
 
 def generate_response(
     prompt: str,
-    model: pipeline,
+    model: Pipeline,
     temperature: float,
     max_tokens: int,
     top_k: int,
