@@ -1,0 +1,9 @@
+FROm pytorch/pytorch
+
+WORKDIR /app
+
+COPY . .
+
+RUN pip install pandas transformers[torch] accelerate 
+
+CMD [ "python" ]
