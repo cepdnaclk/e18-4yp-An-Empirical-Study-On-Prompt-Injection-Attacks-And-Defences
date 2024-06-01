@@ -119,7 +119,7 @@ class GroqChatHelper:
 if __name__ == "__main__":
     helper = ""
     if os.getenv("GROQ_EVAL_MODE"):
-        eval_mode = os.getenv("GROQ_EVAL_MODE")
+        eval_mode = True
         helper = GroqChatHelper("data.csv", "responses.csv", eval_mode = eval_mode)
         print("Eval mode activated")
     else:
