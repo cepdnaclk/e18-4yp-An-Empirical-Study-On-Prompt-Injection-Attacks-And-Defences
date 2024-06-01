@@ -6,7 +6,6 @@ from time import sleep
 from pathlib import Path
 from typing import Dict, List
 import os
-import requests
 
 from dotenv import load_dotenv
 from groq import Groq
