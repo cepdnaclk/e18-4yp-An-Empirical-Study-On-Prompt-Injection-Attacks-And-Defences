@@ -33,10 +33,12 @@ class GroqChatHelper:
         self.data = []
         self.eval_mode = eval_mode
 
-    def load_csv(self, file=self.input_file) -> List[Dict[str, str]]:
+    def load_csv(self, file=None) -> List[Dict[str, str]]:
         """
         Load a CSV file into a list of dictionaries.
         """
+        if file is None:
+            file = self.input_file
         try:
             with Path(file).open("r") as file:
                 reader = csv.DictReader(file)
@@ -45,10 +47,12 @@ class GroqChatHelper:
             logging.info(f"File {self.output_file} not found.")
             return []
 
-    def write_csv(self, file = self.output_file):
+    def write_csv(self, file = None):
         """
         Write data to a CSV file.
         """
+        if file is None:
+            file = self.output_file
         with open(file, "w", newline="") as file:
             field_names = ["llm", "llm_answer", "evaluation"] if self.eval else self.fieldnames
             writer = csv.DictWriter(file, fieldnames=field_names)
