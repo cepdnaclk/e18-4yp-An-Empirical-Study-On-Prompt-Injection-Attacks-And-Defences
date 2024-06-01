@@ -94,7 +94,7 @@ class GroqChatHelper:
         Main entry point to run the application.
         """
         prompts = [doc["result"] for doc in self.load_csv()]
-        self.process_prompts(prompts[:20])
+        self.process_prompts(prompts)
         self.write_csv()
 
 
