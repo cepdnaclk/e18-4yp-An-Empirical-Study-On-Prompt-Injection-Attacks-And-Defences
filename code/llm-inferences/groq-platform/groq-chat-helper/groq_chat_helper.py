@@ -54,7 +54,7 @@ class GroqChatHelper:
         if file is None:
             file = self.output_file
         with open(file, "w", newline="") as file:
-            field_names = ["llm", "llm_answer", "evaluation"] if self.eval else self.fieldnames
+            field_names = ["llm", "llm_answer", "evaluation"] if self.eval_mode else self.fieldnames
             writer = csv.DictWriter(file, fieldnames=field_names)
             writer.writeheader()
             writer.writerows(self.data)
