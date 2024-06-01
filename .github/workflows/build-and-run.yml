@@ -26,7 +26,7 @@ jobs:
             echo "Creating an empty responses.csv file..."
             touch "$RESPONSE_FILE"
           fi
-          docker run --rm -v "$RESPONSE_FILE:/app/responses.csv" -e GROQ_API_KEY="${{ secrets.GROQ_API_KEY2 }}" groq-chat-helper
+          docker run --rm -v "$RESPONSE_FILE:/app/responses.csv" -e GROQ_API_KEY="${{ secrets.GROQ_API_KEY_NIMUTHU }}" groq-chat-helper
 
       - name: Upload output file
         uses: actions/upload-artifact@v3
