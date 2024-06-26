@@ -4,9 +4,9 @@ def getting_data(file_to_output):
     """
     This function gets two csv file as data, and outputs a csv file with only prompts
     """
-    jbTemplates_df = pd.read_csv('code\evaluation_analysis\jbTemplates_example.csv')
+    jbTemplates_df = pd.read_csv('code\evaluation_analysis\data_results\jbTemplates_example.csv')
 
-    questions_df = pd.read_csv('code\evaluation_analysis\questions_example.csv')
+    questions_df = pd.read_csv('code\evaluation_analysis\data_results\questions_example.csv')
 
     # Add a key for merging
     jbTemplates_df['key'] = 1
@@ -30,4 +30,4 @@ def getting_data(file_to_output):
     prompts_only.to_csv(file_to_output, index=False)  # index=False excludes the row index from the CSV
 
 
-getting_data("outputofsmallset.csv")
+getting_data("code/evaluation_analysis/data_results/outputofsmallset.csv")

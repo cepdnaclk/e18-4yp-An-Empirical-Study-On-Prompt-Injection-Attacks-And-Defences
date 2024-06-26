@@ -34,4 +34,4 @@ def getting_data_new(file_to_input, file_to_output):
     print("Done!")
     
     
-getting_data_new("e18-4yp-An-Empirical-Study-On-Prompt-Injection-Attacks-And-Defences/Evaluation-methods/text_behaviours.csv", "e18-4yp-An-Empirical-Study-On-Prompt-Injection-Attacks-And-Defences/Evaluation-methods/output_new.csv")
+getting_data_new("code/evaluation_analysis/data_results/text_behaviours.csv", "code/evaluation_analysis/data_results/output_new.csv")

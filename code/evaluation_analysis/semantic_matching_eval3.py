@@ -58,8 +58,8 @@ def semantic_matching(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--data_path', type=str, default="e18-4yp-An-Empirical-Study-On-Prompt-Injection-Attacks-And-Defences/Evaluation-methods/responses.csv", help='data path to the csv file containing prompts and responses')
-    parser.add_argument('--output_file', type=str, default="eval3.csv", help='name of output file')
+    parser.add_argument('--data_path', type=str, default="code/evaluation_analysis/data_results/output_new.csv", help='data path to the csv file containing prompts and responses')
+    parser.add_argument('--output_file', type=str, default="code/evaluation_analysis/data_results/eval3.csv", help='name of output file')
     # parser.add_argument('--retry_times', type=int, default=10, help='retry times when exception occurs')
 
     args = parser.parse_args()
@@ -68,6 +68,6 @@ if __name__ == "__main__":
 
 '''
 to run,
-python semantic_matching_eval3.py --data_path "code\evaluation_analysis\data and results\output_new.csv" --output_file "code\evaluation_analysis\data and results\eval3.csv"
+python semantic_matching_eval3.py --data_path "code\evaluation_analysis\data_results\output_new.csv" --output_file "code\evaluation_analysis\data_results\eval3.csv"
 
 '''

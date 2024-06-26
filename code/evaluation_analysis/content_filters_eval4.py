@@ -69,11 +69,10 @@ if __name__ == "__main__":
     # parser.add_argument('--retry_times', type=int, default=10, help='retry times when exception occurs')
 
     args = parser.parse_args()
-
     content_filters(args)
 
 '''
 to run,
-python content_filters_eval4.py --data_path "code\evaluation_analysis\data and results\output_new_sample.csv" --output_file "code\evaluation_analysis\data and results\eval4_sample.csv"
+python content_filters_eval4.py --data_path "code\evaluation_analysis\data_results\output_new_sample.csv" --output_file "code\evaluation_analysis\data_results\eval4_sample.csv"
 
 '''
