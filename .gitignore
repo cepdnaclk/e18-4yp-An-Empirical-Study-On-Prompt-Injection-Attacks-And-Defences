@@ -8,3 +8,4 @@ code/llm-inferences/groq-platform/.env
 code/.DS_Store
 code/llm-inferences/groq-platform/output.csv
 code/llm-inferences/groq-platform/inference-test.py
+.env
