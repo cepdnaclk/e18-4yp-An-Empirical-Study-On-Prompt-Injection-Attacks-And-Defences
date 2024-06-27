@@ -26,11 +26,9 @@ class GroqChatHelper:
     A helper class to interact with the Groq API and handle CSV file operations.
     """
 
-    def __init__(
-        self, input_file: str, output_file: str, model: str = "llama3-8b-8192"
-    ):
+    def __init__(self, input_file: str, output_file: str, model: str = "gemma-7b-it"):
         self.input_file = Path(input_file)
-        self.output_file = f"{output_file}_{model}"
+        self.output_file = f"{output_file}_{model}.csv"
         self.model = model
         self.input_fieldnames = ["generation", "is_jb"]
         self.output_fieldnames = ["generation", "response", "true_is_jb"]
@@ -112,5 +110,5 @@ class GroqChatHelper:
 
 
 if __name__ == "__main__":
-    helper = GroqChatHelper("data.csv", "output.csv")
+    helper = GroqChatHelper("data.csv", "output")
     helper.run()
