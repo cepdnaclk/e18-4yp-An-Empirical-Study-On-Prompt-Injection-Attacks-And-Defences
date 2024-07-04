@@ -106,6 +106,6 @@ if __name__ == "__main__":
 
 '''
 to run,
-python string_matching_eval1.py --data_path "code\evaluation_analysis\data_results\output_new.csv" --output_file "code\evaluation_analysis\data_results\eval1.csv"
+python string_matching_eval1.py --data_path "data_results\output_new.csv" --output_file "data_results\eval1.csv"
 
 '''
