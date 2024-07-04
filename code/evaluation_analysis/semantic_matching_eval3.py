@@ -68,6 +68,6 @@ if __name__ == "__main__":
 
 '''
 to run,
-python semantic_matching_eval3.py --data_path "code\evaluation_analysis\data_results\output_new.csv" --output_file "code\evaluation_analysis\data_results\eval3.csv"
+python semantic_matching_eval3.py --data_path "data_results\output_new.csv" --output_file "data_results\eval3.csv"
 
 '''

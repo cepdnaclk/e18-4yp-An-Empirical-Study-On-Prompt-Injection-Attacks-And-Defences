@@ -42,7 +42,7 @@ def content_filters(args):
         else:
             jailbroken = "Cannot determine"
             
-        return [toxicity, jailbroken]
+        return jailbroken
   
     #Create a dataframe
     prompts_and_responses = pd.read_csv(args.data_path)
@@ -73,6 +73,6 @@ if __name__ == "__main__":
 
 '''
 to run,
-python content_filters_eval4.py --data_path "code\evaluation_analysis\data_results\output_new_sample.csv" --output_file "code\evaluation_analysis\data_results\eval4_sample.csv"
+python content_filters_eval4.py --data_path "data_results\output_new.csv" --output_file "data_results\eval4.csv"
 
 '''
