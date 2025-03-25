@@ -30,7 +30,7 @@ def parse_arguments():
     parser.add_argument("--gpu-id", type=int, default=0, help="Specific GPU ID to use")
     parser.add_argument("--batch-size", type=int, default=1, help="Batch size")
     parser.add_argument("--sample-size", type=int, default=None, help="Number of samples to process")
-    parser.add_argument("--max-new-tokens", type=int, default=128, help="Max new tokens to generate")
+    parser.add_argument("--max-new-tokens", type=int, default=512, help="Max new tokens to generate")
     parser.add_argument("--temperature", type=float, default=0.1, help="Temperature for generation")
     parser.add_argument("--shard-id", type=int, default=None, help="Shard ID (0-based)")
     parser.add_argument("--num-shards", type=int, default=None, help="Total number of shards")
