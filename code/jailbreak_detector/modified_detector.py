@@ -143,7 +143,7 @@ def load_model_and_tokenizer(model_name, device, args):
     
     # Import here to delay until needed
     try:
-        from transformers import AutoTokenizer, AutoModelForCausalLM
+        from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig
     except ImportError:
         logger.error("Failed to import transformers. Make sure it's installed correctly.")
         raise
@@ -156,6 +156,21 @@ def load_model_and_tokenizer(model_name, device, args):
     # Prepare authentication
     auth_token = args.hf_token
     use_auth_token = args.use_auth_token
+    
+    # Get model config to determine model type
+    config_kwargs = {}
+    if use_auth_token:
+        config_kwargs["use_auth_token"] = True
+    elif auth_token:
+        config_kwargs["token"] = auth_token
+        
+    try:
+        config = AutoConfig.from_pretrained(model_name, **config_kwargs)
+        model_type = getattr(config, "model_type", "unknown")
+        logger.info(f"Detected model type: {model_type}")
+    except Exception as e:
+        logger.warning(f"Could not determine model type: {str(e)}")
+        model_type = "unknown"
     
     # Load tokenizer with authentication if needed
     logger.info("Loading tokenizer...")
@@ -180,16 +195,21 @@ def load_model_and_tokenizer(model_name, device, args):
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     
-    # Load the model with authentication if needed
+    # Load the model with authentication if needed but avoid token parameter for OPT models
     logger.info("Loading model...")
     model_kwargs = {
         "torch_dtype": torch.float16 if device.startswith("cuda") else torch.float32
     }
     
-    if use_auth_token:
-        model_kwargs["use_auth_token"] = True
-    elif auth_token:
-        model_kwargs["token"] = auth_token
+    # Only add auth parameters if the model supports them
+    # Known models that don't support token parameter: OPT
+    if model_type.lower() not in ["opt"]:
+        if use_auth_token:
+            model_kwargs["use_auth_token"] = True
+        elif auth_token:
+            model_kwargs["token"] = auth_token
+    else:
+        logger.info(f"Model type {model_type} doesn't support token parameter, skipping it")
     
     try:
         # Basic model loading without device_map (to avoid issues)
@@ -207,7 +227,18 @@ def load_model_and_tokenizer(model_name, device, args):
                 model.to(device)
             except Exception as e2:
                 logger.error(f"Second attempt failed: {str(e2)}")
-                raise
+                
+                # One last attempt with minimal parameters
+                logger.info("Making final attempt with minimal parameters...")
+                try:
+                    model = AutoModelForCausalLM.from_pretrained(
+                        model_name,
+                        torch_dtype=torch.float16 if device.startswith("cuda") else torch.float32
+                    )
+                    model.to(device)
+                except Exception as e3:
+                    logger.error(f"Final attempt failed: {str(e3)}")
+                    raise
     
     model.eval()
     
