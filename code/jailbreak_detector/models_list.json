@@ -1,0 +1,9 @@
+[
+    "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    "meta-llama/Llama-2-7b-chat-hf",
+    "mistralai/Mistral-7B-Instruct-v0.2",
+    "microsoft/phi-2",
+    "stabilityai/stablelm-2-1_6b",
+    "facebook/opt-1.3b",
+    "google/gemma-2b-it"
+]
