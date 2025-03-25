@@ -268,6 +268,7 @@ def generate_texts(model, tokenizer, prompts, device, args):
                 
                 # Get only the generated part (not the input)
                 generated_ids = output_ids[0][input_ids.shape[1]:]
+                logger.info(f"Generated IDs: {generated_ids}")
                 output_text = tokenizer.decode(generated_ids, skip_special_tokens=True)
                 outputs.append(output_text)
             except Exception as e:
