@@ -258,6 +258,10 @@ def generate_texts(model, tokenizer, prompts, device, args):
                 input_ids = encoding["input_ids"].to(device)
                 attention_mask = encoding["attention_mask"].to(device)
                 
+                # Log input information
+                logger.info(f"Input shape: {input_ids.shape}")
+                logger.info(f"Input text: {tokenizer.decode(input_ids[0], skip_special_tokens=True)}")
+                
                 # Generate with modified parameters
                 with torch.no_grad():
                     # Try with greedy search first
@@ -276,8 +280,16 @@ def generate_texts(model, tokenizer, prompts, device, args):
                         min_length=1
                     )
                     
+                    # Log raw output
+                    logger.info(f"Raw output shape: {output_ids.shape}")
+                    logger.info(f"Raw output: {output_ids[0]}")
+                    
                     # Get only the generated part (not the input)
                     generated_ids = output_ids[0][input_ids.shape[1]:]
+                    
+                    # Log generated part
+                    logger.info(f"Generated IDs shape: {generated_ids.shape}")
+                    logger.info(f"Generated IDs: {generated_ids}")
                     
                     # Decode with proper handling of special tokens
                     output_text = tokenizer.decode(
@@ -311,12 +323,24 @@ def generate_texts(model, tokenizer, prompts, device, args):
                             top_k=1  # Low top_k for more deterministic sampling
                         )
                         
+                        # Log raw output
+                        logger.info(f"Raw output shape (sampling): {output_ids.shape}")
+                        logger.info(f"Raw output (sampling): {output_ids[0]}")
+                        
                         generated_ids = output_ids[0][input_ids.shape[1]:]
+                        
+                        # Log generated part
+                        logger.info(f"Generated IDs shape (sampling): {generated_ids.shape}")
+                        logger.info(f"Generated IDs (sampling): {generated_ids}")
+                        
                         output_text = tokenizer.decode(
                             generated_ids,
                             skip_special_tokens=True,
                             clean_up_tokenization_spaces=True
                         ).strip()
+                        
+                        # Log the final output
+                        logger.info(f"Generated text (sampling): {output_text}")
                         
                         # Validate output again
                         if not output_text or output_text not in ['0', '1']:
