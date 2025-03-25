@@ -287,12 +287,13 @@ def generate_texts(model, tokenizer, prompts, device, args):
                         generated_ids,
                         skip_special_tokens=True,
                         clean_up_tokenization_spaces=True
-                    )
+                    ).strip()
                     
                     # Log the final output
                     logger.info(f"Generated text: {output_text}")
                     
-                    if not output_text.strip() or output_text.strip() not in ['0', '1']:
+                    # Validate output
+                    if not output_text or output_text not in ['0', '1']:
                         logger.warning("Greedy search produced invalid output, trying sampling...")
                         # Try with sampling
                         output_ids = model.generate(
@@ -320,9 +321,10 @@ def generate_texts(model, tokenizer, prompts, device, args):
                             generated_ids,
                             skip_special_tokens=True,
                             clean_up_tokenization_spaces=True
-                        )
+                        ).strip()
                         
-                        if not output_text.strip() or output_text.strip() not in ['0', '1']:
+                        # Validate output again
+                        if not output_text or output_text not in ['0', '1']:
                             logger.warning("Both greedy search and sampling produced invalid output!")
                             output_text = "Error: Invalid generation"
                 
