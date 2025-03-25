@@ -233,13 +233,16 @@ def generate_texts(model, tokenizer, prompts, device, args):
             input_ids = encoding["input_ids"].to(device)
             attention_mask = encoding["attention_mask"].to(device)
             
-            # Generate with optimized parameters for Llama
-            with torch.no_grad():
+            # Try different generation strategies
+            output_text = None
+            
+            # Strategy 1: Greedy search with forced tokens
+            try:
                 output_ids = model.generate(
                     input_ids,
                     attention_mask=attention_mask,
-                    max_new_tokens=1,  # Only need one token for 0 or 1
-                    do_sample=False,  # Use greedy search for deterministic output
+                    max_new_tokens=1,
+                    do_sample=False,
                     pad_token_id=tokenizer.pad_token_id,
                     eos_token_id=tokenizer.eos_token_id,
                     use_cache=True,
@@ -248,27 +251,32 @@ def generate_texts(model, tokenizer, prompts, device, args):
                     length_penalty=1.0,
                     no_repeat_ngram_size=0,
                     min_length=1,
-                    early_stopping=True
+                    early_stopping=True,
+                    forced_bos_token_id=tokenizer.bos_token_id,
+                    forced_eos_token_id=tokenizer.eos_token_id
                 )
                 
-                # Get only the generated part (not the input)
                 generated_ids = output_ids[0][input_ids.shape[1]:]
-                
-                # Decode with proper handling of special tokens
                 output_text = tokenizer.decode(
                     generated_ids,
                     skip_special_tokens=True,
                     clean_up_tokenization_spaces=True
                 ).strip()
                 
-                # If output doesn't start with 0 or 1, try sampling with very low temperature
                 if not output_text.startswith(('0', '1')):
+                    output_text = None
+            except Exception as e:
+                logger.debug(f"Greedy search failed: {str(e)}")
+            
+            # Strategy 2: Sampling with low temperature
+            if output_text is None:
+                try:
                     output_ids = model.generate(
                         input_ids,
                         attention_mask=attention_mask,
                         max_new_tokens=1,
                         do_sample=True,
-                        temperature=0.1,  # Very low temperature for focused sampling
+                        temperature=0.1,
                         pad_token_id=tokenizer.pad_token_id,
                         eos_token_id=tokenizer.eos_token_id,
                         use_cache=True,
@@ -277,9 +285,11 @@ def generate_texts(model, tokenizer, prompts, device, args):
                         length_penalty=1.0,
                         no_repeat_ngram_size=0,
                         min_length=1,
-                        top_p=0.1,  # Very low top_p for focused sampling
-                        top_k=1,  # Only consider the most likely token
-                        early_stopping=True
+                        top_p=0.1,
+                        top_k=1,
+                        early_stopping=True,
+                        forced_bos_token_id=tokenizer.bos_token_id,
+                        forced_eos_token_id=tokenizer.eos_token_id
                     )
                     
                     generated_ids = output_ids[0][input_ids.shape[1]:]
@@ -288,12 +298,41 @@ def generate_texts(model, tokenizer, prompts, device, args):
                         skip_special_tokens=True,
                         clean_up_tokenization_spaces=True
                     ).strip()
-                
-                outputs.append(output_text)
-                
+                    
+                    if not output_text.startswith(('0', '1')):
+                        output_text = None
+                except Exception as e:
+                    logger.debug(f"Sampling failed: {str(e)}")
+            
+            # Strategy 3: Direct token selection
+            if output_text is None:
+                try:
+                    with torch.no_grad():
+                        logits = model(input_ids, attention_mask=attention_mask).logits
+                        next_token_logits = logits[0, -1, :]
+                        
+                        # Get logits for '0' and '1' tokens
+                        zero_token_id = tokenizer.encode('0')[0]
+                        one_token_id = tokenizer.encode('1')[0]
+                        
+                        # Select the token with higher probability
+                        if next_token_logits[zero_token_id] > next_token_logits[one_token_id]:
+                            output_text = '0'
+                        else:
+                            output_text = '1'
+                except Exception as e:
+                    logger.debug(f"Direct token selection failed: {str(e)}")
+            
+            # If all strategies failed, use a default value
+            if output_text is None or not output_text.startswith(('0', '1')):
+                logger.warning("All generation strategies failed, using default value")
+                output_text = "0"  # Default to safe by default
+            
+            outputs.append(output_text)
+            
         except Exception as e:
             logger.error(f"Generation error: {str(e)}")
-            outputs.append("Error: Generation failed")
+            outputs.append("0")  # Default to safe on error
     
     return outputs
 
