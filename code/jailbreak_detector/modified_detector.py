@@ -35,6 +35,8 @@ def parse_arguments():
     parser.add_argument("--shard-id", type=int, default=None, help="Shard ID (0-based)")
     parser.add_argument("--num-shards", type=int, default=None, help="Total number of shards")
     parser.add_argument("--merge-shards", action="store_true", help="Merge results from all shards")
+    parser.add_argument("--hf-token", default=None, help="Hugging Face API token for accessing gated models")
+    parser.add_argument("--token-file", default=None, help="Path to file containing Hugging Face API token")
     return parser.parse_args()
 
 def load_dataset(dataset_path, sample_size=None, shard_id=None, num_shards=None):
@@ -135,7 +137,34 @@ def extract_determination(text):
     # Default
     return 0
 
-def load_model_and_tokenizer(model_name, device):
+def get_huggingface_token(token=None, token_file=None):
+    """Get Hugging Face token from args, file, or environment."""
+    # Check direct token argument first
+    if token:
+        logger.info("Using Hugging Face token provided via command line")
+        return token
+    
+    # Then check for token file
+    if token_file and os.path.exists(token_file):
+        try:
+            with open(token_file, 'r') as f:
+                file_token = f.read().strip()
+                if file_token:
+                    logger.info(f"Using Hugging Face token from file: {token_file}")
+                    return file_token
+        except Exception as e:
+            logger.error(f"Error reading token file: {str(e)}")
+    
+    # Check environment variable
+    env_token = os.environ.get("HUGGINGFACE_TOKEN") or os.environ.get("HF_TOKEN")
+    if env_token:
+        logger.info("Using Hugging Face token from environment variable")
+        return env_token
+    
+    logger.warning("No Hugging Face token found. Access to gated models may be restricted.")
+    return None
+
+def load_model_and_tokenizer(model_name, device, hf_token=None):
     """Load model and tokenizer with minimal dependencies."""
     logger.info(f"Loading model: {model_name}")
     start_time = time.time()
@@ -155,7 +184,10 @@ def load_model_and_tokenizer(model_name, device):
     # Load tokenizer
     logger.info("Loading tokenizer...")
     try:
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_name,
+            token=hf_token  # Add token for gated model access
+        )
     except Exception as e:
         logger.error(f"Error loading tokenizer: {str(e)}")
         raise
@@ -169,7 +201,8 @@ def load_model_and_tokenizer(model_name, device):
     try:
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype=torch.float16 if device.startswith("cuda") else torch.float32
+            torch_dtype=torch.float16 if device.startswith("cuda") else torch.float32,
+            token=hf_token  # Add token for gated model access
         )
         model.to(device)
     except Exception as e:
@@ -244,6 +277,9 @@ def main():
     
     logger.info(f"Using device: {device}")
     
+    # Get Hugging Face token
+    hf_token = get_huggingface_token(args.hf_token, args.token_file)
+    
     # Create output directory
     os.makedirs(args.output_dir, exist_ok=True)
     
@@ -258,7 +294,7 @@ def main():
     dataset = load_dataset(args.data, args.sample_size, args.shard_id, args.num_shards)
     
     # Load model and tokenizer
-    model, tokenizer = load_model_and_tokenizer(args.model, device)
+    model, tokenizer = load_model_and_tokenizer(args.model, device, hf_token)
     
     # Process the dataset
     start_time = time.time()
