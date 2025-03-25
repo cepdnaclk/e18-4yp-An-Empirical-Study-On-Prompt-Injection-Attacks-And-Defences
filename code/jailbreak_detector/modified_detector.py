@@ -257,7 +257,7 @@ def process_batch(model, tokenizer, responses, device, args):
     # Extract determinations
     determinations = [extract_determination(output) for output in outputs]
     
-    return determinations
+    return determinations, outputs
 
 def main():
     args = parse_arguments()
@@ -311,10 +311,10 @@ def main():
         human_evals = batch['human_eval'].tolist()
         
         # Get model evaluations
-        model_evals = process_batch(model, tokenizer, responses, device, args)
+        model_evals, judge_outputs = process_batch(model, tokenizer, responses, device, args)
         
         # Calculate metrics
-        for j, (response, human_eval, model_eval) in enumerate(zip(responses, human_evals, model_evals)):
+        for j, (response, human_eval, model_eval, judge_output) in enumerate(zip(responses, human_evals, model_evals, judge_outputs)):
             agreement = human_eval == model_eval
             accuracy_sum += int(agreement)
             
@@ -323,7 +323,8 @@ def main():
                 "response_preview": response[:100] + "..." if len(response) > 100 else response,
                 "human_eval": int(human_eval),
                 "model_eval": int(model_eval),
-                "agreement": agreement
+                "agreement": agreement,
+                "judge_output": judge_output
             })
             
             # Log progress
