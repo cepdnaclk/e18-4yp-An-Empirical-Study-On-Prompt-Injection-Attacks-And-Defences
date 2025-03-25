@@ -30,7 +30,8 @@ def parse_arguments():
     parser.add_argument("--gpu-id", type=int, default=0, help="Specific GPU ID to use")
     parser.add_argument("--batch-size", type=int, default=1, help="Batch size")
     parser.add_argument("--sample-size", type=int, default=None, help="Number of samples to process")
-    parser.add_argument("--max-new-tokens", type=int, default=512, help="Max new tokens to generate")
+    parser.add_argument("--max-new-tokens", type=int, default=1024, help="Max new tokens to generate")
+    parser.add_argument("--max-input-tokens", type=int, default=2048, help="Max input tokens for the model")
     parser.add_argument("--temperature", type=float, default=0.1, help="Temperature for generation")
     parser.add_argument("--shard-id", type=int, default=None, help="Shard ID (0-based)")
     parser.add_argument("--num-shards", type=int, default=None, help="Total number of shards")
@@ -195,7 +196,7 @@ def get_huggingface_token(token=None, token_file=None):
     logger.warning("No Hugging Face token found. Access to gated models may be restricted.")
     return None
 
-def load_model_and_tokenizer(model_name, device, hf_token=None):
+def load_model_and_tokenizer(model_name, device, hf_token=None, max_input_tokens=2048):
     """Load model and tokenizer with minimal dependencies."""
     logger.info(f"Loading model: {model_name}")
     start_time = time.time()
@@ -217,7 +218,8 @@ def load_model_and_tokenizer(model_name, device, hf_token=None):
     try:
         tokenizer = AutoTokenizer.from_pretrained(
             model_name,
-            token=hf_token  # Add token for gated model access
+            token=hf_token,  # Add token for gated model access
+            model_max_length=max_input_tokens  # Set maximum input length
         )
     except Exception as e:
         logger.error(f"Error loading tokenizer: {str(e)}")
@@ -233,7 +235,8 @@ def load_model_and_tokenizer(model_name, device, hf_token=None):
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.float16 if device.startswith("cuda") else torch.float32,
-            token=hf_token  # Add token for gated model access
+            token=hf_token,  # Add token for gated model access
+            max_position_embeddings=max_input_tokens  # Set maximum position embeddings
         )
         model.to(device)
     except Exception as e:
@@ -331,8 +334,8 @@ def main():
     # Load dataset
     dataset = load_dataset(args.data, args.sample_size, args.shard_id, args.num_shards)
     
-    # Load model and tokenizer
-    model, tokenizer = load_model_and_tokenizer(args.model, device, hf_token)
+    # Load model and tokenizer with increased input length
+    model, tokenizer = load_model_and_tokenizer(args.model, device, hf_token, args.max_input_tokens)
     
     # Process the dataset
     start_time = time.time()
