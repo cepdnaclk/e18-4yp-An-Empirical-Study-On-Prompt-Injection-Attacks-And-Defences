@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Modified Jailbreak Detector to work with dependency constraints
+Modified Jailbreak Detector with minimal dependencies
+Maintains the structure of the original detector but removes token handling
 """
 import os
 import argparse
@@ -34,8 +35,6 @@ def parse_arguments():
     parser.add_argument("--shard-id", type=int, default=None, help="Shard ID (0-based)")
     parser.add_argument("--num-shards", type=int, default=None, help="Total number of shards")
     parser.add_argument("--merge-shards", action="store_true", help="Merge results from all shards")
-    parser.add_argument("--hf-token", default=None, help="Hugging Face API token for gated models")
-    parser.add_argument("--use-auth-token", action="store_true", help="Use the token from huggingface-cli login")
     return parser.parse_args()
 
 def load_dataset(dataset_path, sample_size=None, shard_id=None, num_shards=None):
@@ -136,14 +135,14 @@ def extract_determination(text):
     # Default
     return 0
 
-def load_model_and_tokenizer(model_name, device, args):
-    """Load model and tokenizer with auth token support."""
+def load_model_and_tokenizer(model_name, device):
+    """Load model and tokenizer with minimal dependencies."""
     logger.info(f"Loading model: {model_name}")
     start_time = time.time()
     
     # Import here to delay until needed
     try:
-        from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig
+        from transformers import AutoTokenizer, AutoModelForCausalLM
     except ImportError:
         logger.error("Failed to import transformers. Make sure it's installed correctly.")
         raise
@@ -153,92 +152,29 @@ def load_model_and_tokenizer(model_name, device, args):
         torch.cuda.empty_cache()
         gc.collect()
     
-    # Prepare authentication
-    auth_token = args.hf_token
-    use_auth_token = args.use_auth_token
-    
-    # Get model config to determine model type
-    config_kwargs = {}
-    if use_auth_token:
-        config_kwargs["use_auth_token"] = True
-    elif auth_token:
-        config_kwargs["token"] = auth_token
-        
-    try:
-        config = AutoConfig.from_pretrained(model_name, **config_kwargs)
-        model_type = getattr(config, "model_type", "unknown")
-        logger.info(f"Detected model type: {model_type}")
-    except Exception as e:
-        logger.warning(f"Could not determine model type: {str(e)}")
-        model_type = "unknown"
-    
-    # Load tokenizer with authentication if needed
+    # Load tokenizer
     logger.info("Loading tokenizer...")
-    tokenizer_kwargs = {}
-    if use_auth_token:
-        tokenizer_kwargs["use_auth_token"] = True
-    elif auth_token:
-        tokenizer_kwargs["token"] = auth_token
-        
     try:
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_name,
-            **tokenizer_kwargs
-        )
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
     except Exception as e:
         logger.error(f"Error loading tokenizer: {str(e)}")
-        if "401 Client Error" in str(e) or "403 Client Error" in str(e):
-            logger.error("Authentication error. Make sure you provide a valid Hugging Face token.")
         raise
     
     # Ensure we have a padding token
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     
-    # Load the model with authentication if needed but avoid token parameter for OPT models
+    # Load the model with minimal parameters
     logger.info("Loading model...")
-    model_kwargs = {
-        "torch_dtype": torch.float16 if device.startswith("cuda") else torch.float32
-    }
-    
-    # Only add auth parameters if the model supports them
-    # Known models that don't support token parameter: OPT
-    if model_type.lower() not in ["opt"]:
-        if use_auth_token:
-            model_kwargs["use_auth_token"] = True
-        elif auth_token:
-            model_kwargs["token"] = auth_token
-    else:
-        logger.info(f"Model type {model_type} doesn't support token parameter, skipping it")
-    
     try:
-        # Basic model loading without device_map (to avoid issues)
-        model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype=torch.float16 if device.startswith("cuda") else torch.float32
+        )
         model.to(device)
     except Exception as e:
         logger.error(f"Error loading model: {str(e)}")
-        
-        # Try with even more minimal parameters if there was an error
-        if "token" in model_kwargs:
-            logger.info("Retrying without token parameter...")
-            del model_kwargs["token"]
-            try:
-                model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
-                model.to(device)
-            except Exception as e2:
-                logger.error(f"Second attempt failed: {str(e2)}")
-                
-                # One last attempt with minimal parameters
-                logger.info("Making final attempt with minimal parameters...")
-                try:
-                    model = AutoModelForCausalLM.from_pretrained(
-                        model_name,
-                        torch_dtype=torch.float16 if device.startswith("cuda") else torch.float32
-                    )
-                    model.to(device)
-                except Exception as e3:
-                    logger.error(f"Final attempt failed: {str(e3)}")
-                    raise
+        raise
     
     model.eval()
     
@@ -322,7 +258,7 @@ def main():
     dataset = load_dataset(args.data, args.sample_size, args.shard_id, args.num_shards)
     
     # Load model and tokenizer
-    model, tokenizer = load_model_and_tokenizer(args.model, device, args)
+    model, tokenizer = load_model_and_tokenizer(args.model, device)
     
     # Process the dataset
     start_time = time.time()
