@@ -298,6 +298,13 @@ def process_batch(model, tokenizer, responses, device, args):
     # Extract determinations
     determinations = [extract_determination(output) for output in outputs]
     
+    # Log the outputs for debugging
+    for i, (output, determination) in enumerate(zip(outputs, determinations)):
+        if not output:
+            logger.warning(f"Empty output for response {i}")
+        else:
+            logger.debug(f"Model output for response {i}: {output[:200]}...")
+    
     return determinations, outputs
 
 def main():
@@ -351,7 +358,7 @@ def main():
         responses = batch['cleaned text'].tolist()
         human_evals = batch['human_eval'].tolist()
         
-        # Get model evaluations
+        # Get model evaluations and judge outputs
         model_evals, judge_outputs = process_batch(model, tokenizer, responses, device, args)
         
         # Calculate metrics
@@ -359,13 +366,17 @@ def main():
             agreement = human_eval == model_eval
             accuracy_sum += int(agreement)
             
+            # Log the judge output for debugging
+            if not judge_output:
+                logger.warning(f"Empty judge output for response {i+j}")
+            
             results.append({
                 "index": i + j,
                 "response_preview": response[:100] + "..." if len(response) > 100 else response,
                 "human_eval": int(human_eval),
                 "model_eval": int(model_eval),
                 "agreement": agreement,
-                "judge_output": judge_output
+                "judge_output": judge_output if judge_output else "Error: No output generated"
             })
             
             # Log progress
