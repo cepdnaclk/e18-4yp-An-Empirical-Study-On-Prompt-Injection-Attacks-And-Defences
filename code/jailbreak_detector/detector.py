@@ -42,7 +42,8 @@ class JailbreakDetector:
         use_flash_attention: bool = True,
         use_compile: bool = True,
         compile_mode: str = "reduce-overhead",
-        use_cache: bool = True
+        use_cache: bool = True,
+        device_map: str = None
     ):
         """
         Initialize the jailbreak detector with a specified LLM.
@@ -60,6 +61,7 @@ class JailbreakDetector:
             use_compile: Whether to use torch.compile for inference optimization
             compile_mode: Mode for torch.compile (default: reduce-overhead)
             use_cache: Whether to use KV cache for faster generation
+            device_map: Strategy for multi-GPU distribution (auto, balanced, sequential)
         """
         self.logger = logging.getLogger(__name__)
         self.model_name = model_name
@@ -74,6 +76,16 @@ class JailbreakDetector:
         self.use_compile = use_compile and device == "cuda"
         self.compile_mode = compile_mode
         self.use_cache = use_cache
+        self.device_map = device_map
+        
+        # Detect available GPUs
+        if torch.cuda.is_available():
+            self.gpu_count = torch.cuda.device_count()
+            self.logger.info(f"Found {self.gpu_count} CUDA devices")
+            for i in range(self.gpu_count):
+                self.logger.info(f"  GPU {i}: {torch.cuda.get_device_name(i)}")
+        else:
+            self.gpu_count = 0
         
         # Load model and tokenizer
         self.logger.info(f"Loading model {model_name} on {device}")
@@ -162,15 +174,18 @@ Confidence: [LOW/MEDIUM/HIGH]
             if not self.tokenizer.pad_token:
                 self.tokenizer.pad_token = self.tokenizer.eos_token
             
-            # Configure device map for CPU offloading if requested
+            # Configure device map for multi-GPU setup
             device_map = self.device
-            if self.offload_to_cpu and self.device == "cuda":
+            if self.device_map:
+                self.logger.info(f"Using {self.device_map} device mapping strategy for multi-GPU")
+                device_map = self.device_map
+            elif self.offload_to_cpu and self.device == "cuda":
                 self.logger.info("Using CPU offloading for layers to reduce GPU memory usage")
                 device_map = "auto"
             
             # Load model with optimizations
             load_start_time = time.time()
-            self.logger.info(f"Loading model to {self.device} with {'quantization' if self.quantize else 'full precision'}")
+            self.logger.info(f"Loading model to {device_map} with {'quantization' if self.quantize else 'full precision'}")
             
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,

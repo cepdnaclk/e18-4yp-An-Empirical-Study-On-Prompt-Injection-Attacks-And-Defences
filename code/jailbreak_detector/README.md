@@ -12,6 +12,7 @@ Key features:
 - Optimize inference for GPU efficiency
 - Benchmark multiple models
 - Analyze custom datasets
+- Multi-GPU support for parallel processing
 
 ## Installation
 
@@ -53,6 +54,51 @@ To evaluate multiple models, create a JSON file with model names:
 ```bash
 python analyze_dataset.py --models-list models_list.json --optimize
 ```
+
+## Multi-GPU Support
+
+The project includes several options for utilizing multiple GPUs:
+
+### 1. Single Model Across Multiple GPUs
+
+For large models that don't fit in a single GPU's memory:
+
+```bash
+python analyze_dataset.py --model meta-llama/Llama-2-7b-chat-hf --device-map auto
+```
+
+Options:
+- `--device-map`: Strategy for multi-GPU distribution (auto, balanced, sequential)
+
+### 2. Dataset Sharding Across Multiple GPUs
+
+Process different parts of the dataset on different GPUs in parallel:
+
+```bash
+python multi_gpu_analyze.py --model meta-llama/Llama-2-7b-chat-hf --gpu-ids 0,1,2,3
+```
+
+Options:
+- `--gpu-ids`: Comma-separated list of GPU IDs to use
+- `--single-gpu-per-process`: Use a single GPU per process
+- `--optimize`: Apply all optimizations
+- `--max-new-tokens`: Maximum tokens to generate
+- `--temperature`: Generation temperature
+- `--sample-size`: Number of samples to use from dataset
+
+### 3. Multiple Models in Parallel Across GPUs
+
+Run different models simultaneously on different GPUs:
+
+```bash
+python parallel_models.py --models-list models_list.json --gpu-ids 0,1,2,3
+```
+
+Options:
+- `--gpu-ids`: Comma-separated list of GPU IDs to use
+- `--max-concurrency`: Maximum number of models to run concurrently
+- `--sample-size`: Number of samples to use from dataset
+- `--optimize`: Apply all optimizations
 
 ## GPU Optimization
 
@@ -123,6 +169,46 @@ Analyze the dataset with multiple optimization options:
 ```bash
 python analyze_dataset.py --model TinyLlama/TinyLlama-1.1B-Chat-v1.0 --batch-size 8 --optimize
 ```
+
+Run models across multiple GPUs in parallel:
+```bash
+python parallel_models.py --models-list models_list.json --gpu-ids 0,1,2,3 --sample-size 100
+```
+
+Shard dataset processing across multiple GPUs:
+```bash
+python multi_gpu_analyze.py --model meta-llama/Llama-2-7b-chat-hf --gpu-ids 0,1,2,3 --optimize
+```
+
+## Advanced Multi-GPU Usage
+
+### Example 1: Processing Multiple Models with Maximum Efficiency
+
+To evaluate 7 models using 4 GPUs with dynamic allocation:
+
+```bash
+python parallel_models.py --models-list models_list.json --gpu-ids 0,1,2,3 --max-concurrency 4 --sample-size 100 --optimize
+```
+
+This will:
+1. Start 4 models in parallel (one on each GPU)
+2. When a model finishes, start the next model on the freed GPU
+3. Continue until all 7 models are processed
+4. Compare all model results automatically
+
+### Example 2: Sharding a Large Dataset
+
+To process a large dataset with a single model across 4 GPUs:
+
+```bash
+python multi_gpu_analyze.py --model meta-llama/Llama-2-7b-chat-hf --gpu-ids 0,1,2,3 --single-gpu-per-process --optimize
+```
+
+This will:
+1. Split the dataset into 4 equal shards
+2. Process each shard on a different GPU simultaneously
+3. Merge the results from all shards
+4. Generate a single evaluation against human judgments
 
 ## Acknowledgements
 

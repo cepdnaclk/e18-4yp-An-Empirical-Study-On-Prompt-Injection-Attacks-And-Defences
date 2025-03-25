@@ -110,17 +110,48 @@ def parse_arguments():
         action="store_true",
         help="Apply all optimizations (compile, flash attention, etc.)"
     )
+    # Add multi-GPU specific arguments
+    parser.add_argument(
+        "--device-map",
+        choices=["auto", "balanced", "sequential"],
+        default=None,
+        help="Multi-GPU device mapping strategy"
+    )
+    parser.add_argument(
+        "--shard-id",
+        type=int,
+        default=None,
+        help="Shard ID for dataset splitting (0-based)"
+    )
+    parser.add_argument(
+        "--num-shards",
+        type=int,
+        default=None,
+        help="Total number of shards for dataset splitting"
+    )
+    parser.add_argument(
+        "--merge-shards",
+        action="store_true",
+        help="Merge results from multiple shards"
+    )
+    parser.add_argument(
+        "--shards-pattern",
+        default="{model_name}_shard{shard_id}_results.json",
+        help="Pattern for shard result files"
+    )
     
     return parser.parse_args()
 
 
-def load_dataset(dataset_path: str, sample_size: int = None) -> pd.DataFrame:
+def load_dataset(dataset_path: str, sample_size: int = None, shard_id: int = None, num_shards: int = None) -> pd.DataFrame:
     """
     Load the dataset for analysis.
     
     Args:
         dataset_path: Path to the dataset
         sample_size: Number of samples to use
+        shard_id: Shard ID for dataset splitting
+        num_shards: Total number of shards for dataset splitting
         
     Returns:
         Loaded dataset
@@ -134,8 +165,23 @@ def load_dataset(dataset_path: str, sample_size: int = None) -> pd.DataFrame:
     logger.info(f"Dataset size: {len(dataset)} rows")
     logger.info(f"Human evaluation distribution: {dataset['human_eval'].value_counts().to_dict()}")
     
+    # Apply sharding if specified
+    if shard_id is not None and num_shards is not None:
+        if shard_id >= num_shards:
+            raise ValueError(f"Shard ID {shard_id} must be less than number of shards {num_shards}")
+            
+        # Calculate shard size
+        total_size = len(dataset)
+        shard_size = total_size // num_shards
+        start_idx = shard_id * shard_size
+        end_idx = start_idx + shard_size if shard_id < num_shards - 1 else total_size
+        
+        # Apply sharding
+        dataset = dataset.iloc[start_idx:end_idx].reset_index(drop=True)
+        logger.info(f"Processing shard {shard_id+1}/{num_shards} with {len(dataset)} samples")
+    
     # Sample from dataset if requested
-    if sample_size is not None and sample_size < len(dataset):
+    elif sample_size is not None and sample_size < len(dataset):
         # Stratified sampling to maintain class distribution
         jailbroken = dataset[dataset['human_eval'] == 1]
         not_jailbroken = dataset[dataset['human_eval'] == 0]
@@ -169,7 +215,9 @@ def analyze_with_model(
     device: str = None,
     max_new_tokens: int = 128,
     temperature: float = 0.1,
-    optimize: bool = False
+    optimize: bool = False,
+    device_map: str = None,
+    shard_id: int = None
 ) -> Dict[str, Any]:
     """
     Analyze the dataset with a specific model.
@@ -184,6 +232,8 @@ def analyze_with_model(
         max_new_tokens: Maximum number of tokens to generate
         temperature: Temperature for generation
         optimize: Whether to apply all optimizations
+        device_map: Multi-GPU device mapping strategy
+        shard_id: Shard ID for output filename (if using sharding)
         
     Returns:
         Analysis results
@@ -215,7 +265,8 @@ def analyze_with_model(
         use_bettertransformer=optimize,
         use_flash_attention=optimize,
         use_compile=optimize and device == "cuda",
-        use_cache=True
+        use_cache=True,
+        device_map=device_map
     )
     
     try:
@@ -236,7 +287,14 @@ def analyze_with_model(
         
         # Save results
         model_safe_name = model_name.replace('/', '_')
-        results_path = os.path.join(output_dir, f"{model_safe_name}_results.json")
+        
+        # Adjust filename for sharded processing
+        if shard_id is not None:
+            results_filename = f"{model_safe_name}_shard{shard_id}_results.json"
+        else:
+            results_filename = f"{model_safe_name}_results.json"
+            
+        results_path = os.path.join(output_dir, results_filename)
         os.makedirs(os.path.dirname(os.path.abspath(results_path)), exist_ok=True)
         
         with open(results_path, 'w', encoding='utf-8') as f:
@@ -266,6 +324,50 @@ def analyze_with_model(
         }
 
 
+def merge_shard_results(model_name: str, output_dir: str, num_shards: int, pattern: str = "{model_name}_shard{shard_id}_results.json") -> str:
+    """
+    Merge results from multiple shards.
+    
+    Args:
+        model_name: Name of the model
+        output_dir: Directory containing shard results
+        num_shards: Number of shards to merge
+        pattern: Pattern for shard result filenames
+        
+    Returns:
+        Path to merged results file
+    """
+    logger = logging.getLogger(__name__)
+    logger.info(f"Merging results from {num_shards} shards for model {model_name}")
+    
+    model_safe_name = model_name.replace('/', '_')
+    all_results = []
+    
+    for shard_id in range(num_shards):
+        filename = pattern.format(model_name=model_safe_name, shard_id=shard_id)
+        filepath = os.path.join(output_dir, filename)
+        
+        if not os.path.exists(filepath):
+            logger.warning(f"Shard file {filepath} not found")
+            continue
+            
+        with open(filepath, 'r', encoding='utf-8') as f:
+            try:
+                shard_results = json.load(f)
+                all_results.extend(shard_results)
+                logger.info(f"Loaded {len(shard_results)} results from {filepath}")
+            except json.JSONDecodeError:
+                logger.error(f"Error decoding JSON from {filepath}")
+    
+    # Save merged results
+    merged_filepath = os.path.join(output_dir, f"{model_safe_name}_results.json")
+    with open(merged_filepath, 'w', encoding='utf-8') as f:
+        json.dump(all_results, f, indent=2)
+        
+    logger.info(f"Merged {len(all_results)} results saved to {merged_filepath}")
+    return merged_filepath
+
+
 def main():
     """Main entry point for the analysis script."""
     args = parse_arguments()
@@ -280,8 +382,46 @@ def main():
         # Create output directory
         os.makedirs(args.output_dir, exist_ok=True)
         
+        # If merging shards, perform merge operation and exit
+        if args.merge_shards:
+            if args.num_shards is None:
+                # Try to detect number of shards from existing files
+                model_safe_name = args.model.replace('/', '_')
+                pattern = args.shards_pattern.format(model_name=model_safe_name, shard_id="*")
+                
+                # Use simple logic to estimate number of shards
+                import glob
+                shard_files = glob.glob(os.path.join(args.output_dir, pattern.replace("*", "[0-9]*")))
+                
+                if not shard_files:
+                    logger.error("No shard files found and --num-shards not specified")
+                    return 1
+                
+                num_shards = max([int(f.split("shard")[-1].split("_")[0]) for f in shard_files]) + 1
+                logger.info(f"Detected {num_shards} shards based on existing files")
+            else:
+                num_shards = args.num_shards
+                
+            merged_file = merge_shard_results(
+                model_name=args.model,
+                output_dir=args.output_dir,
+                num_shards=num_shards,
+                pattern=args.shards_pattern
+            )
+            
+            # Run evaluation on merged results
+            evaluator = JailbreakEvaluator(results_dir=args.output_dir)
+            evaluator.evaluate_model(
+                model_name=args.model,
+                results_path=merged_file,
+                dataset_path=args.data
+            )
+            
+            logger.info("Merge and evaluation complete")
+            return 0
+        
         # Load dataset
-        dataset = load_dataset(args.data, args.sample_size)
+        dataset = load_dataset(args.data, args.sample_size, args.shard_id, args.num_shards)
         
         # Determine models to evaluate
         models_to_evaluate = [args.model]
@@ -315,12 +455,19 @@ def main():
                 device=args.device,
                 max_new_tokens=args.max_new_tokens,
                 temperature=args.temperature,
-                optimize=args.optimize
+                optimize=args.optimize,
+                device_map=args.device_map,
+                shard_id=args.shard_id
             )
             
             # Skip if there was an error
             if "error" in result:
                 logger.error(f"Skipping evaluation for {model_name} due to analysis error")
+                continue
+            
+            # Skip evaluation if using sharding (will be done after merging)
+            if args.shard_id is not None:
+                logger.info(f"Skipping evaluation for shard {args.shard_id} (will be done after merging)")
                 continue
             
             # Evaluate model against human evaluations
@@ -350,8 +497,8 @@ def main():
             
             evaluation_results.append(eval_result)
         
-        # Compare models if more than one was evaluated
-        if len(evaluation_results) > 1:
+        # Compare models if more than one was evaluated and not using sharding
+        if len(evaluation_results) > 1 and args.shard_id is None:
             logger.info(f"Comparing {len(evaluation_results)} models")
             comparison_df = evaluator.compare_models(evaluation_results)
             
