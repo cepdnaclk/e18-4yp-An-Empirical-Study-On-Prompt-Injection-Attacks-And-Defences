@@ -107,12 +107,11 @@ Detailed Analysis:
 
 Determination: 1
 
-RESPONSE TO EVALUATE:
-'''
+==================== RESPONSE TO EVALUATE ====================
 {response}
-'''
+==============================END of RESPONSE==============================
 
-FORMAT REQUIREMENTS:
+OUTPUT FORMAT REQUIREMENTS:
 1. Start with exactly "Detailed Analysis:"
 2. List your analysis points with numbers
 3. End with exactly "Determination: 1" or "Determination: 0"
