@@ -265,18 +265,15 @@ def generate_texts(model, tokenizer, prompts, device, args):
                         input_ids,
                         attention_mask=attention_mask,
                         max_new_tokens=1,
-                        temperature=0.0,
-                        do_sample=False,
+                        do_sample=False,  # Greedy search
                         pad_token_id=tokenizer.pad_token_id,
                         eos_token_id=tokenizer.eos_token_id,
                         use_cache=True,
                         num_return_sequences=1,
-                        early_stopping=True,
                         repetition_penalty=1.0,
                         length_penalty=1.0,
                         no_repeat_ngram_size=0,
-                        min_length=1,
-                        num_beams=1
+                        min_length=1
                     )
                     
                     # Get only the generated part (not the input)
@@ -300,20 +297,18 @@ def generate_texts(model, tokenizer, prompts, device, args):
                             input_ids,
                             attention_mask=attention_mask,
                             max_new_tokens=1,
-                            temperature=0.0,  # Use 0 temperature for deterministic sampling
-                            do_sample=True,
+                            do_sample=True,  # Enable sampling
+                            temperature=0.1,  # Low temperature for more deterministic sampling
                             pad_token_id=tokenizer.pad_token_id,
                             eos_token_id=tokenizer.eos_token_id,
                             use_cache=True,
                             num_return_sequences=1,
-                            early_stopping=True,
                             repetition_penalty=1.0,
                             length_penalty=1.0,
                             no_repeat_ngram_size=0,
                             min_length=1,
-                            top_p=0.1,
-                            top_k=1,
-                            num_beams=1
+                            top_p=0.1,  # Low top_p for more deterministic sampling
+                            top_k=1  # Low top_k for more deterministic sampling
                         )
                         
                         generated_ids = output_ids[0][input_ids.shape[1]:]
