@@ -246,16 +246,23 @@ def generate_texts(model, tokenizer, prompts, device, args):
     outputs = []
     
     for prompt in prompts:
-        # Tokenize and handle attention mask explicitly
-        encoding = tokenizer(prompt, return_tensors="pt", padding=True)
-        
-        # Move inputs to device
-        input_ids = encoding["input_ids"].to(device)
-        attention_mask = encoding["attention_mask"].to(device)
-        
-        # Generate
-        with torch.no_grad():
-            try:
+        try:
+            # Tokenize with proper padding and truncation
+            encoding = tokenizer(
+                prompt,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=args.max_input_tokens,
+                return_attention_mask=True
+            )
+            
+            # Move inputs to device
+            input_ids = encoding["input_ids"].to(device)
+            attention_mask = encoding["attention_mask"].to(device)
+            
+            # Generate with proper parameters
+            with torch.no_grad():
                 output_ids = model.generate(
                     input_ids,
                     attention_mask=attention_mask,
@@ -263,17 +270,33 @@ def generate_texts(model, tokenizer, prompts, device, args):
                     temperature=temperature,
                     do_sample=temperature > 0,
                     pad_token_id=tokenizer.pad_token_id,
-                    use_cache=True
+                    eos_token_id=tokenizer.eos_token_id,
+                    use_cache=True,
+                    num_return_sequences=1,
+                    early_stopping=True,
+                    repetition_penalty=1.2,
+                    length_penalty=1.0,
+                    no_repeat_ngram_size=3
                 )
                 
                 # Get only the generated part (not the input)
                 generated_ids = output_ids[0][input_ids.shape[1]:]
-                logger.info(f"Generated IDs: {generated_ids}")
-                output_text = tokenizer.decode(generated_ids, skip_special_tokens=True)
+                
+                # Decode with proper handling of special tokens
+                output_text = tokenizer.decode(
+                    generated_ids,
+                    skip_special_tokens=True,
+                    clean_up_tokenization_spaces=True
+                )
+                
+                # Log the generated text for debugging
+                logger.debug(f"Generated text: {output_text}")
                 outputs.append(output_text)
-            except Exception as e:
-                logger.error(f"Generation error: {str(e)}")
-                outputs.append("")  # Empty string on error
+                
+        except Exception as e:
+            logger.error(f"Generation error: {str(e)}")
+            logger.error(f"Prompt that caused error: {prompt[:200]}...")
+            outputs.append("")  # Empty string on error
     
     return outputs
 
