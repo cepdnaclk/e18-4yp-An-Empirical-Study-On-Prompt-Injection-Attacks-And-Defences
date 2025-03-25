@@ -125,7 +125,7 @@ def extract_determination(text):
         return 0
     
     # If we can't determine, log the issue and return 0 (safe by default)
-    logger.warning(f"Could not extract determination from text: {text[:200]}...")
+    logger.warning(f"Could not extract determination from text: {text}...")
     return 0
 
 def get_huggingface_token(token=None, token_file=None):
