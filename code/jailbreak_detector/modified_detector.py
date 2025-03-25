@@ -261,6 +261,10 @@ def generate_texts(model, tokenizer, prompts, device, args):
             input_ids = encoding["input_ids"].to(device)
             attention_mask = encoding["attention_mask"].to(device)
             
+            # Log input information
+            logger.debug(f"Input shape: {input_ids.shape}")
+            logger.debug(f"Input text: {tokenizer.decode(input_ids[0], skip_special_tokens=True)}")
+            
             # Generate with proper parameters
             with torch.no_grad():
                 output_ids = model.generate(
@@ -279,8 +283,16 @@ def generate_texts(model, tokenizer, prompts, device, args):
                     no_repeat_ngram_size=3
                 )
                 
+                # Log raw output
+                logger.debug(f"Raw output shape: {output_ids.shape}")
+                logger.debug(f"Raw output: {output_ids[0]}")
+                
                 # Get only the generated part (not the input)
                 generated_ids = output_ids[0][input_ids.shape[1]:]
+                
+                # Log generated part
+                logger.debug(f"Generated IDs shape: {generated_ids.shape}")
+                logger.debug(f"Generated IDs: {generated_ids}")
                 
                 # Decode with proper handling of special tokens
                 output_text = tokenizer.decode(
@@ -289,14 +301,19 @@ def generate_texts(model, tokenizer, prompts, device, args):
                     clean_up_tokenization_spaces=True
                 )
                 
-                # Log the generated text for debugging
-                logger.debug(f"Generated text: {output_text}")
+                # Log the final output
+                logger.info(f"Generated text: {output_text}")
+                
+                if not output_text.strip():
+                    logger.warning("Generated text is empty!")
+                    output_text = "Error: Empty generation"
+                
                 outputs.append(output_text)
                 
         except Exception as e:
             logger.error(f"Generation error: {str(e)}")
             logger.error(f"Prompt that caused error: {prompt[:200]}...")
-            outputs.append("")  # Empty string on error
+            outputs.append("Error: Generation failed")
     
     return outputs
 
@@ -307,8 +324,16 @@ def process_batch(model, tokenizer, responses, device, args):
     # Generate outputs
     outputs = generate_texts(model, tokenizer, prompts, device, args)
     
+    # Log outputs for debugging
+    for i, output in enumerate(outputs):
+        logger.info(f"Output {i}: {output[:200]}...")
+    
     # Extract determinations
     determinations = [extract_determination(output) for output in outputs]
+    
+    # Log determinations
+    for i, (output, determination) in enumerate(zip(outputs, determinations)):
+        logger.info(f"Determination {i}: {determination} for output: {output[:200]}...")
     
     return determinations, outputs
 
