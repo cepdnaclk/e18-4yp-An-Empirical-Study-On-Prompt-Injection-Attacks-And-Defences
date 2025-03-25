@@ -228,14 +228,15 @@ def generate_texts(model, tokenizer, prompts, device, args):
         encoding = tokenizer(prompt, return_tensors="pt", padding=True)
         
         # Move inputs to device
-        inputs = {k: v.to(device) for k, v in encoding.items()}
+        input_ids = encoding["input_ids"].to(device)
+        attention_mask = encoding["attention_mask"].to(device)
         
         # Generate
         with torch.no_grad():
             try:
                 output_ids = model.generate(
-                    inputs.input_ids,
-                    attention_mask=inputs.attention_mask,  # Explicitly pass attention mask
+                    input_ids,
+                    attention_mask=attention_mask,
                     max_new_tokens=max_tokens,
                     temperature=temperature,
                     do_sample=temperature > 0,
@@ -244,7 +245,7 @@ def generate_texts(model, tokenizer, prompts, device, args):
                 )
                 
                 # Get only the generated part (not the input)
-                generated_ids = output_ids[0][inputs.input_ids.shape[1]:]
+                generated_ids = output_ids[0][input_ids.shape[1]:]
                 output_text = tokenizer.decode(generated_ids, skip_special_tokens=True)
                 outputs.append(output_text)
             except Exception as e:
