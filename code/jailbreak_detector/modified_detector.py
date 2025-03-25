@@ -249,100 +249,114 @@ def generate_texts(model, tokenizer, prompts, device, args):
     
     for prompt in prompts:
         try:
+            # Log the raw prompt
+            logger.info(f"Raw prompt: {prompt[:200]}...")
+            
             # Tokenize with proper padding and truncation
-            encoding = tokenizer(
-                prompt,
-                return_tensors="pt",
-                padding=True,
-                truncation=True,
-                max_length=args.max_input_tokens,
-                return_attention_mask=True
-            )
-            
-            # Move inputs to device
-            input_ids = encoding["input_ids"].to(device)
-            attention_mask = encoding["attention_mask"].to(device)
-            
-            # Log input information
-            logger.info(f"Input shape: {input_ids.shape}")
-            logger.info(f"Input text: {tokenizer.decode(input_ids[0], skip_special_tokens=True)}")
-            
-            # Generate with modified parameters
-            with torch.no_grad():
-                output_ids = model.generate(
-                    input_ids,
-                    attention_mask=attention_mask,
-                    max_new_tokens=max_tokens,
-                    temperature=temperature,
-                    do_sample=True,  # Always sample to avoid empty outputs
-                    pad_token_id=tokenizer.pad_token_id,
-                    eos_token_id=tokenizer.eos_token_id,
-                    use_cache=True,
-                    num_return_sequences=1,
-                    early_stopping=False,  # Disable early stopping
-                    repetition_penalty=1.0,  # Reduce repetition penalty
-                    length_penalty=1.0,
-                    no_repeat_ngram_size=0,  # Disable n-gram penalty
-                    min_length=1,  # Ensure at least one token is generated
-                    top_p=0.9,  # Add nucleus sampling
-                    top_k=50,  # Add top-k sampling
-                    num_beams=1  # Use greedy search
+            try:
+                encoding = tokenizer(
+                    prompt,
+                    return_tensors="pt",
+                    padding=True,
+                    truncation=True,
+                    max_length=args.max_input_tokens,
+                    return_attention_mask=True,
+                    add_special_tokens=True  # Ensure special tokens are added
                 )
                 
-                # Log raw output
-                logger.info(f"Raw output shape: {output_ids.shape}")
-                logger.info(f"Raw output: {output_ids[0]}")
+                # Log tokenization info
+                logger.info(f"Tokenization successful")
+                logger.info(f"Input shape: {encoding['input_ids'].shape}")
+                logger.info(f"Attention mask shape: {encoding['attention_mask'].shape}")
                 
-                # Get only the generated part (not the input)
-                generated_ids = output_ids[0][input_ids.shape[1]:]
+                # Move inputs to device
+                input_ids = encoding["input_ids"].to(device)
+                attention_mask = encoding["attention_mask"].to(device)
                 
-                # Log generated part
-                logger.info(f"Generated IDs shape: {generated_ids.shape}")
-                logger.info(f"Generated IDs: {generated_ids}")
+                # Log input information
+                logger.info(f"Input shape: {input_ids.shape}")
+                logger.info(f"Input text: {tokenizer.decode(input_ids[0], skip_special_tokens=True)}")
                 
-                # Decode with proper handling of special tokens
-                output_text = tokenizer.decode(
-                    generated_ids,
-                    skip_special_tokens=True,
-                    clean_up_tokenization_spaces=True
-                )
-                
-                # Log the final output
-                logger.info(f"Generated text: {output_text}")
-                
-                if not output_text.strip():
-                    logger.warning("Generated text is empty!")
-                    # Try generating again with different parameters
+                # Generate with modified parameters
+                with torch.no_grad():
+                    # First try with greedy search
                     output_ids = model.generate(
                         input_ids,
                         attention_mask=attention_mask,
                         max_new_tokens=max_tokens,
-                        temperature=0.7,  # Higher temperature
-                        do_sample=True,
+                        temperature=temperature,
+                        do_sample=False,  # Try greedy search first
                         pad_token_id=tokenizer.pad_token_id,
                         eos_token_id=tokenizer.eos_token_id,
                         use_cache=True,
                         num_return_sequences=1,
-                        early_stopping=False,
+                        early_stopping=True,
                         repetition_penalty=1.0,
                         length_penalty=1.0,
                         no_repeat_ngram_size=0,
-                        min_length=1,
-                        top_p=0.95,
-                        top_k=100
+                        min_length=1
                     )
                     
+                    # Log raw output
+                    logger.info(f"Raw output shape: {output_ids.shape}")
+                    logger.info(f"Raw output: {output_ids[0]}")
+                    
+                    # Get only the generated part (not the input)
                     generated_ids = output_ids[0][input_ids.shape[1]:]
+                    
+                    # Log generated part
+                    logger.info(f"Generated IDs shape: {generated_ids.shape}")
+                    logger.info(f"Generated IDs: {generated_ids}")
+                    
+                    # Decode with proper handling of special tokens
                     output_text = tokenizer.decode(
                         generated_ids,
                         skip_special_tokens=True,
                         clean_up_tokenization_spaces=True
                     )
                     
+                    # Log the final output
+                    logger.info(f"Generated text: {output_text}")
+                    
                     if not output_text.strip():
-                        output_text = "Error: Empty generation"
+                        logger.warning("Greedy search produced empty output, trying sampling...")
+                        # Try with sampling
+                        output_ids = model.generate(
+                            input_ids,
+                            attention_mask=attention_mask,
+                            max_new_tokens=max_tokens,
+                            temperature=0.7,
+                            do_sample=True,
+                            pad_token_id=tokenizer.pad_token_id,
+                            eos_token_id=tokenizer.eos_token_id,
+                            use_cache=True,
+                            num_return_sequences=1,
+                            early_stopping=True,
+                            repetition_penalty=1.0,
+                            length_penalty=1.0,
+                            no_repeat_ngram_size=0,
+                            min_length=1,
+                            top_p=0.9,
+                            top_k=50
+                        )
+                        
+                        generated_ids = output_ids[0][input_ids.shape[1]:]
+                        output_text = tokenizer.decode(
+                            generated_ids,
+                            skip_special_tokens=True,
+                            clean_up_tokenization_spaces=True
+                        )
+                        
+                        if not output_text.strip():
+                            logger.warning("Sampling also produced empty output!")
+                            output_text = "Error: Empty generation"
                 
                 outputs.append(output_text)
+                
+            except Exception as e:
+                logger.error(f"Tokenization error: {str(e)}")
+                logger.error(f"Problematic prompt: {prompt[:200]}...")
+                outputs.append("Error: Tokenization failed")
                 
         except Exception as e:
             logger.error(f"Generation error: {str(e)}")
