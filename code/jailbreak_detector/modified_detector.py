@@ -268,13 +268,13 @@ def generate_texts(model, tokenizer, prompts, device, args):
                 
                 # Generate with modified parameters
                 with torch.no_grad():
-                    # Try with sampling first
+                    # Try with greedy search first
                     output_ids = model.generate(
                         input_ids,
                         attention_mask=attention_mask,
-                        max_new_tokens=2,  # We only need 1-2 tokens for 0 or 1
-                        temperature=0.7,
-                        do_sample=True,
+                        max_new_tokens=1,  # We only need 1 token for 0 or 1
+                        temperature=0.0,  # Use 0 temperature for deterministic output
+                        do_sample=False,  # Use greedy search
                         pad_token_id=tokenizer.pad_token_id,
                         eos_token_id=tokenizer.eos_token_id,
                         use_cache=True,
@@ -284,8 +284,6 @@ def generate_texts(model, tokenizer, prompts, device, args):
                         length_penalty=1.0,
                         no_repeat_ngram_size=0,
                         min_length=1,
-                        top_p=0.9,
-                        top_k=50,
                         num_beams=1
                     )
                     
@@ -310,15 +308,15 @@ def generate_texts(model, tokenizer, prompts, device, args):
                     # Log the final output
                     logger.info(f"Generated text: {output_text}")
                     
-                    if not output_text.strip():
-                        logger.warning("Sampling produced empty output, trying greedy search...")
-                        # Try with greedy search
+                    if not output_text.strip() or output_text.strip() not in ['0', '1']:
+                        logger.warning("Greedy search produced invalid output, trying sampling...")
+                        # Try with sampling
                         output_ids = model.generate(
                             input_ids,
                             attention_mask=attention_mask,
-                            max_new_tokens=2,
-                            temperature=0.0,  # Use 0 temperature for greedy search
-                            do_sample=False,
+                            max_new_tokens=1,
+                            temperature=0.1,  # Low temperature for more deterministic sampling
+                            do_sample=True,
                             pad_token_id=tokenizer.pad_token_id,
                             eos_token_id=tokenizer.eos_token_id,
                             use_cache=True,
@@ -327,7 +325,10 @@ def generate_texts(model, tokenizer, prompts, device, args):
                             repetition_penalty=1.0,
                             length_penalty=1.0,
                             no_repeat_ngram_size=0,
-                            min_length=1
+                            min_length=1,
+                            top_p=0.1,  # Low top_p for more deterministic sampling
+                            top_k=1,  # Low top_k for more deterministic sampling
+                            num_beams=1
                         )
                         
                         generated_ids = output_ids[0][input_ids.shape[1]:]
@@ -337,9 +338,9 @@ def generate_texts(model, tokenizer, prompts, device, args):
                             clean_up_tokenization_spaces=True
                         )
                         
-                        if not output_text.strip():
-                            logger.warning("Both sampling and greedy search produced empty output!")
-                            output_text = "Error: Empty generation"
+                        if not output_text.strip() or output_text.strip() not in ['0', '1']:
+                            logger.warning("Both greedy search and sampling produced invalid output!")
+                            output_text = "Error: Invalid generation"
                 
                 outputs.append(output_text)
                 
